@@ -100,16 +100,6 @@ Remember:
 - Account for valid alternative phrasings
 ```
 
-### Scoring System
-
-The judge uses a 0-10 scoring scale:
-
-- **9-10**: Exceptional - Perfect or near-perfect match in meaning and quality
-- **7-8**: Strong - Minor differences but maintains accuracy and completeness
-- **5-6**: Acceptable - Some important elements present but with notable omissions or inaccuracies
-- **3-4**: Poor - Major omissions or inaccuracies
-- **0-2**: Unacceptable - Completely incorrect or irrelevant
-
 ### Example Judgment
 
 For the input:
