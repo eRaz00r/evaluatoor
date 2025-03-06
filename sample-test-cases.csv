@@ -1,0 +1,6 @@
+id,input,expected_output
+1,"What is the capital of France?","The capital of France is Paris."
+2,"Explain quantum computing in simple terms.","Quantum computing uses quantum bits or qubits that can exist in multiple states at once, unlike classical bits that are either 0 or 1. This allows quantum computers to process certain types of problems much faster than classical computers."
+3,"Write a short poem about the moon.","The moon shines bright in the night sky, a silver orb that guides our way. Its gentle glow, a lullaby, as stars dance in cosmic display."
+4,"What are the first 5 prime numbers?","The first 5 prime numbers are 2, 3, 5, 7, and 11."
+5,"How do you make a peanut butter and jelly sandwich?","To make a peanut butter and jelly sandwich: 1) Take two slices of bread. 2) Spread peanut butter on one slice. 3) Spread jelly or jam on the other slice. 4) Put the two slices together with the peanut butter and jelly facing each other. 5) Optionally, cut the sandwich in half." 
