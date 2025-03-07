@@ -163,33 +163,102 @@ Remember:
 
     const response = await generateResponse(judgeModelId, prompt);
     
-    // Try to parse the response as JSON first
-    try {
-      const jsonResponse = JSON.parse(response.trim());
+    // Enhanced parsing logic with multiple fallback strategies
+    return extractJudgmentAndScore(response, testCase.id);
+  } catch (error) {
+    console.error(`Error judging test case ${testCase.id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Extracts judgment and score from model responses with multiple fallback strategies.
+ * 
+ * We implement a multi-layered parsing approach because:
+ * 1. Different models format their responses differently
+ * 2. Models may include explanatory text before or after the JSON
+ * 3. Some models might not follow the JSON format at all
+ * 
+ * This robust extraction ensures we can get meaningful results even from
+ * imperfect model outputs, improving the overall reliability of the system.
+ * 
+ * @param response The raw response from the model
+ * @param testCaseId The ID of the test case (for logging)
+ * @returns An object containing the judgment and score
+ */
+function extractJudgmentAndScore(response: string, testCaseId: string): { judgment: string; score: number } {
+  const trimmedResponse = response.trim();
+  
+  // Strategy 1: Try to parse the entire response as JSON
+  try {
+    const jsonResponse = JSON.parse(trimmedResponse);
+    if (typeof jsonResponse.score === 'number' && typeof jsonResponse.explanation === 'string') {
+      return {
+        judgment: jsonResponse.explanation,
+        score: jsonResponse.score
+      };
+    }
+  } catch (error) {
+    // If this fails, continue to the next strategy
+    console.log(`Direct JSON parsing failed for test case ${testCaseId}, trying alternative methods`);
+  }
+  
+  // Strategy 2: Try to extract JSON from within the response using regex
+  try {
+    const jsonMatch = trimmedResponse.match(/\{[\s\S]*"score"[\s\S]*"explanation"[\s\S]*\}/);
+    if (jsonMatch) {
+      const extractedJson = jsonMatch[0];
+      const jsonResponse = JSON.parse(extractedJson);
       
       if (typeof jsonResponse.score === 'number' && typeof jsonResponse.explanation === 'string') {
         return {
           judgment: jsonResponse.explanation,
           score: jsonResponse.score
         };
-      } else {
-        throw new Error("Invalid JSON format in response");
       }
-    } catch (parseError) {
-      console.error("Failed to parse JSON response:", parseError);
-      
-      // Fallback parsing for non-JSON responses
-      // This improves robustness when models don't follow the format perfectly
-      const scoreMatch = response.match(/score[:\s]*(\d+(?:\.\d+)?)/i);
-      const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
-      
-      return {
-        judgment: response.trim(),
-        score: isNaN(score) ? 0 : score,
-      };
     }
   } catch (error) {
-    console.error(`Error judging test case ${testCase.id}:`, error);
-    throw error;
+    // If this fails, continue to the next strategy
+    console.log(`JSON extraction via regex failed for test case ${testCaseId}, trying alternative methods`);
   }
+  
+  // Strategy 3: Look for score and explanation separately using regex
+  const scoreMatch = trimmedResponse.match(/score[:\s]*(\d+(?:\.\d+)?)/i);
+  const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
+  
+  // Try to extract explanation using various patterns
+  let explanation = "";
+  
+  // Look for explanation in quotes
+  const explanationInQuotes = trimmedResponse.match(/"explanation"[:\s]*"([^"]*)"/);
+  if (explanationInQuotes && explanationInQuotes[1]) {
+    explanation = explanationInQuotes[1];
+  } 
+  // Look for explanation after "explanation:" label
+  else {
+    const explanationAfterLabel = trimmedResponse.match(/explanation:(.+?)(?:\n|$)/i);
+    if (explanationAfterLabel && explanationAfterLabel[1]) {
+      explanation = explanationAfterLabel[1].trim();
+    }
+    // If still no explanation found, use the entire response as the explanation
+    else {
+      // Remove any score-related text from the response
+      explanation = trimmedResponse.replace(/score[:\s]*\d+(?:\.\d+)?/gi, "").trim();
+      
+      // If explanation is too long, truncate it
+      if (explanation.length > 500) {
+        explanation = explanation.substring(0, 497) + "...";
+      }
+    }
+  }
+  
+  // Ensure we have a valid score
+  const validScore = isNaN(score) ? 0 : Math.min(Math.max(score, 0), 10);
+  
+  console.log(`Extracted score ${validScore} and explanation via fallback methods for test case ${testCaseId}`);
+  
+  return {
+    judgment: explanation || "No explanation provided",
+    score: validScore
+  };
 } 
