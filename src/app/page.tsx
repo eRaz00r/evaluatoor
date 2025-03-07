@@ -13,7 +13,17 @@ import { evaluateTestCase, judgeResponse } from "@/services/ollamaService";
 import { generateCSV, generateJSON } from "@/services/csvService";
 import { downloadFile } from "@/lib/utils";
 
+/**
+ * Main application component that orchestrates the LLM evaluation workflow.
+ * 
+ * We use a single-page architecture to minimize context switching for users
+ * and provide a streamlined workflow from file upload to results download.
+ * The component maintains all state centrally to ensure data consistency
+ * across the evaluation pipeline and to simplify the debugging process.
+ */
 export default function Home() {
+  // State is centralized in the main component to maintain a single source of truth
+  // and to simplify state management without requiring a state management library
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [evaluationModelId, setEvaluationModelId] = useState<string>("");
   const [judgeModelId, setJudgeModelId] = useState<string>("");
@@ -22,6 +32,13 @@ export default function Home() {
   const [isJudging, setIsJudging] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  /**
+   * Adds a log entry to the log display.
+   * 
+   * We use a timestamp-based logging system to provide users with a chronological
+   * view of the evaluation process, which is crucial for debugging and understanding
+   * the flow of operations, especially for long-running evaluations.
+   */
   const addLog = (message: string, type: LogEntry["type"] = "info") => {
     setLogs((prevLogs) => [
       ...prevLogs,
@@ -33,11 +50,30 @@ export default function Home() {
     ]);
   };
 
+  /**
+   * Handles file upload by updating the test cases state.
+   * 
+   * We separate the file upload logic from the evaluation logic to allow
+   * users to upload files without immediately starting the evaluation process.
+   * This gives users time to review and select appropriate models.
+   */
   const handleFileUpload = (uploadedTestCases: TestCase[]) => {
     setTestCases(uploadedTestCases);
     addLog(`Uploaded ${uploadedTestCases.length} test cases`, "success");
   };
 
+  /**
+   * Runs both evaluation and judgment in a single operation.
+   * 
+   * We process test cases sequentially rather than in parallel to:
+   * 1. Prevent overwhelming the local Ollama instance
+   * 2. Provide clearer progress tracking for users
+   * 3. Allow for immediate feedback on each test case
+   * 4. Ensure consistent resource usage throughout the process
+   * 
+   * We update the UI after each test case to give users immediate feedback
+   * rather than waiting for all test cases to complete.
+   */
   const handleRunEvals = async () => {
     if (!evaluationModelId || !judgeModelId) {
       addLog("Please select both evaluation and judge models", "error");
@@ -56,6 +92,8 @@ export default function Home() {
     const updatedTestCases = [...testCases];
     let completedCount = 0;
 
+    // Process each test case sequentially to avoid overwhelming Ollama
+    // and to provide clear progress indicators to the user
     for (let i = 0; i < updatedTestCases.length; i++) {
       const testCase = updatedTestCases[i];
       try {
@@ -69,7 +107,8 @@ export default function Home() {
           error: undefined, // Clear any previous errors
         };
         
-        // Update test cases immediately after evaluation
+        // Update test cases immediately after evaluation to show progress
+        // This provides immediate feedback rather than waiting for all cases
         setTestCases([...updatedTestCases]);
         addLog(`Completed evaluation for test case ${testCase.id}`, "success");
         
@@ -87,6 +126,8 @@ export default function Home() {
         setTestCases([...updatedTestCases]);
         addLog(`Completed judgment for test case ${testCase.id} with score: ${score}`, "success");
       } catch (error) {
+        // Error handling preserves the test case but marks it as failed
+        // This allows users to retry failed cases without losing their data
         updatedTestCases[i] = {
           ...testCase,
           error: error instanceof Error ? error.message : "Unknown error",
@@ -104,6 +145,14 @@ export default function Home() {
     addLog("All evaluations and judgments completed", "success");
   };
 
+  /**
+   * Handles CSV download of test case results.
+   * 
+   * We use CSV as the primary export format because:
+   * 1. It's widely compatible with spreadsheet software
+   * 2. It's easy to parse and analyze
+   * 3. It maintains the tabular structure of the data
+   */
   const handleDownloadCSV = () => {
     const csvData = generateCSV(testCases);
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -111,6 +160,14 @@ export default function Home() {
     addLog("Downloaded results as CSV", "success");
   };
 
+  /**
+   * Handles JSON download of test case results.
+   * 
+   * We offer JSON as an alternative format because:
+   * 1. It preserves the full data structure including nested objects
+   * 2. It's easier to process programmatically
+   * 3. It's the native format for many data analysis tools
+   */
   const handleDownloadJSON = () => {
     const jsonData = generateJSON(testCases);
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -118,11 +175,13 @@ export default function Home() {
     addLog("Downloaded results as JSON", "success");
   };
 
-  const isProcessing = isEvaluating || isJudging;
+  // Derived state values to simplify conditional rendering logic
   const hasResults = testCases.some((tc) => tc.generated_output);
   const hasJudgments = testCases.some((tc) => tc.judgment);
   const hasTestCases = testCases.length > 0;
 
+  // The UI is structured in a top-down workflow that guides users through
+  // the evaluation process in a logical sequence
   return (
     <main className="min-h-screen py-10 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
@@ -141,12 +200,12 @@ export default function Home() {
 
         {/* Main Content */}
         <div className="grid gap-8">
-          {/* File Upload - Now in its own row above model selectors */}
+          {/* File Upload - Placed first to establish the workflow sequence */}
           <div className="glass-card card-glow">
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
           
-          {/* Model Selection - In a separate row below file upload */}
+          {/* Model Selection - Disabled until files are uploaded to enforce workflow */}
           <div className="grid gap-6 md:grid-cols-2">
             <div className="glass-card card-glow">
               <ModelSelector 
@@ -167,12 +226,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions - Contains the main workflow controls */}
           <div className="glass-card card-glow">
             <div className="p-6 border-b border-gray-700">
               <h2 className="text-xl font-semibold text-white">Actions</h2>
             </div>
             <div className="p-6">
+              {/* Progress indicator only shown during evaluation for visual feedback */}
               {isEvaluating && (
                 <div className="mb-8">
                   <div className="flex justify-between mb-2">
@@ -186,7 +246,7 @@ export default function Home() {
               )}
               
               <div className="flex flex-wrap gap-4">
-                {/* Combined Run Evals button */}
+                {/* Combined Run Evals button - Primary action for the workflow */}
                 <button 
                   onClick={handleRunEvals} 
                   disabled={isEvaluating || !hasTestCases || !evaluationModelId || !judgeModelId}
@@ -198,6 +258,7 @@ export default function Home() {
                 
                 <div className="flex-1"></div>
                 
+                {/* Download buttons - Only enabled after results are available */}
                 <button 
                   onClick={handleDownloadCSV} 
                   disabled={!hasResults}
@@ -217,23 +278,25 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Test Cases Table - Made Scrollable */}
+          {/* Test Cases Table - Only shown when test cases exist */}
           {hasTestCases && (
             <div className="glass-card card-glow">
               <div className="p-6 border-b border-gray-700">
                 <h2 className="text-xl font-semibold text-white">Test Cases</h2>
               </div>
+              {/* Scrollable container limits height to prevent overwhelming the UI */}
               <div className="p-0 max-h-[500px] overflow-auto">
                 <TestCaseList testCases={testCases} />
               </div>
             </div>
           )}
 
-          {/* Logs */}
+          {/* Logs - Always visible to provide system feedback */}
           <div className="glass-card card-glow">
             <div className="p-6 border-b border-gray-700">
               <h2 className="text-xl font-semibold text-white">Logs</h2>
             </div>
+            {/* Scrollable container with fixed height to maintain UI consistency */}
             <div className="p-0 max-h-[300px] overflow-auto">
               <LogDisplay logs={logs} />
             </div>

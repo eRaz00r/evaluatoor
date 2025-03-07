@@ -1,7 +1,25 @@
 import { LLMModel, TestCase } from "@/types";
 
+/**
+ * Base URL for the Ollama API.
+ * 
+ * We use a constant for the API URL to:
+ * 1. Make it easy to change if the Ollama API changes
+ * 2. Support different environments (local, development, production)
+ * 3. Maintain consistency across all API calls
+ */
 const OLLAMA_API_BASE_URL = "http://localhost:11434/api";
 
+/**
+ * Fetches available models from the local Ollama instance.
+ * 
+ * We use a dedicated function for model fetching to:
+ * 1. Abstract the API call details from the UI components
+ * 2. Handle error cases consistently
+ * 3. Transform the API response into our application's data model
+ * 
+ * @returns Promise resolving to an array of LLM models
+ */
 export async function getAvailableModels(): Promise<LLMModel[]> {
   try {
     const response = await fetch(`${OLLAMA_API_BASE_URL}/tags`);
@@ -12,6 +30,8 @@ export async function getAvailableModels(): Promise<LLMModel[]> {
     
     const data = await response.json();
     
+    // Transform the API response to match our application's data model
+    // This decouples our internal representation from the API structure
     return data.models.map((model: any) => ({
       name: model.name,
       id: model.name,
@@ -22,6 +42,18 @@ export async function getAvailableModels(): Promise<LLMModel[]> {
   }
 }
 
+/**
+ * Generates a response from a specified model using the Ollama API.
+ * 
+ * We use a non-streaming approach for simplicity and reliability:
+ * 1. Easier to handle errors and retries
+ * 2. Simpler to process complete responses
+ * 3. More consistent behavior across different models
+ * 
+ * @param modelId The ID of the model to use
+ * @param prompt The prompt to send to the model
+ * @returns Promise resolving to the generated text response
+ */
 export async function generateResponse(
   modelId: string,
   prompt: string
@@ -35,7 +67,7 @@ export async function generateResponse(
       body: JSON.stringify({
         model: modelId,
         prompt: prompt,
-        stream: false,
+        stream: false, // Non-streaming for simplicity and reliability
       }),
     });
 
@@ -51,6 +83,18 @@ export async function generateResponse(
   }
 }
 
+/**
+ * Evaluates a test case by generating a response from the specified model.
+ * 
+ * This function is a thin wrapper around generateResponse that:
+ * 1. Adapts the test case format to the API call
+ * 2. Provides specific error handling for test case evaluation
+ * 3. Maintains separation of concerns between data and API interaction
+ * 
+ * @param modelId The ID of the model to use for evaluation
+ * @param testCase The test case to evaluate
+ * @returns Promise resolving to the generated output
+ */
 export async function evaluateTestCase(
   modelId: string,
   testCase: TestCase
@@ -63,6 +107,21 @@ export async function evaluateTestCase(
   }
 }
 
+/**
+ * Judges a response by comparing the generated output to the expected output.
+ * 
+ * We use a structured prompt format to:
+ * 1. Guide the judge model to provide consistent evaluations
+ * 2. Ensure the output is in a parseable JSON format
+ * 3. Standardize the evaluation criteria across different test cases
+ * 
+ * The fallback parsing logic handles cases where the model doesn't follow
+ * the JSON format perfectly, improving robustness with different models.
+ * 
+ * @param judgeModelId The ID of the model to use for judgment
+ * @param testCase The test case containing input, expected output, and generated output
+ * @returns Promise resolving to an object containing the judgment and score
+ */
 export async function judgeResponse(
   judgeModelId: string,
   testCase: TestCase
@@ -104,7 +163,7 @@ Remember:
 
     const response = await generateResponse(judgeModelId, prompt);
     
-    // Parse the JSON response
+    // Try to parse the response as JSON first
     try {
       const jsonResponse = JSON.parse(response.trim());
       
@@ -120,6 +179,7 @@ Remember:
       console.error("Failed to parse JSON response:", parseError);
       
       // Fallback parsing for non-JSON responses
+      // This improves robustness when models don't follow the format perfectly
       const scoreMatch = response.match(/score[:\s]*(\d+(?:\.\d+)?)/i);
       const score = scoreMatch ? parseFloat(scoreMatch[1]) : 0;
       

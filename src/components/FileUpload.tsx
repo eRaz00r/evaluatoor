@@ -10,6 +10,14 @@ interface FileUploadProps {
   onFileUpload: (testCases: TestCase[]) => void;
 }
 
+/**
+ * Interface for tracking file upload progress and status.
+ * 
+ * We use a dedicated interface to track file status because:
+ * 1. It allows us to show progress for each file individually
+ * 2. It provides a clear way to represent different file states
+ * 3. It makes error handling more granular and user-friendly
+ */
 interface FileWithProgress {
   file: File;
   progress: number;
@@ -17,11 +25,30 @@ interface FileWithProgress {
   status: 'pending' | 'processing' | 'completed' | 'error';
 }
 
+/**
+ * Component for uploading and processing CSV files containing test cases.
+ * 
+ * We implement both drag-and-drop and traditional file selection because:
+ * 1. Drag-and-drop provides a more intuitive and efficient user experience
+ * 2. Traditional file selection serves as a fallback for accessibility
+ * 3. Supporting both methods accommodates different user preferences
+ * 
+ * The component shows detailed progress and status for each file to provide
+ * clear feedback during the upload and processing stages.
+ */
 export function FileUpload({ onFileUpload }: FileUploadProps) {
   const [files, setFiles] = useState<FileWithProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
 
+  /**
+   * Handles drag events to provide visual feedback during drag operations.
+   * 
+   * We use event.preventDefault() and stopPropagation() to:
+   * 1. Prevent the browser's default drag behavior
+   * 2. Stop the event from bubbling up to parent elements
+   * 3. Ensure our custom drag handling takes precedence
+   */
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -32,11 +59,20 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     }
   }, []);
 
+  /**
+   * Handles file drop events by filtering for CSV files and adding them to the state.
+   * 
+   * We filter for CSV files immediately to:
+   * 1. Prevent users from uploading unsupported file types
+   * 2. Provide immediate feedback about invalid files
+   * 3. Avoid processing errors later in the workflow
+   */
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
 
+    // Filter for CSV files only to prevent errors with unsupported formats
     const droppedFiles = Array.from(e.dataTransfer.files).filter(
       file => file.type === "text/csv" || file.name.endsWith(".csv")
     );
@@ -46,6 +82,12 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     }
   }, []);
 
+  /**
+   * Handles file selection from the file input element.
+   * 
+   * This provides a traditional file selection method as an alternative
+   * to drag-and-drop, ensuring accessibility and user choice.
+   */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.length) {
       const selectedFiles = Array.from(e.target.files).filter(
@@ -55,6 +97,14 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     }
   };
 
+  /**
+   * Adds new files to the state with initial progress and status.
+   * 
+   * We track files with their progress and status to:
+   * 1. Show individual progress for each file
+   * 2. Allow users to remove files before processing
+   * 3. Provide clear visual feedback about file status
+   */
   const addFiles = (newFiles: File[]) => {
     const fileWithProgress: FileWithProgress[] = newFiles.map(file => ({
       file,
@@ -64,24 +114,47 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     setFiles(prev => [...prev, ...fileWithProgress]);
   };
 
+  /**
+   * Removes a file from the list by its index.
+   * 
+   * We allow file removal before processing to:
+   * 1. Let users correct mistakes in file selection
+   * 2. Give users control over which files to process
+   * 3. Prevent unnecessary processing of unwanted files
+   */
   const removeFile = (index: number) => {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  /**
+   * Processes a single file by parsing its CSV content.
+   * 
+   * We process files individually to:
+   * 1. Track progress for each file separately
+   * 2. Handle errors at the file level rather than aborting all files
+   * 3. Provide granular feedback about the processing status
+   * 
+   * @param fileWithProgress The file to process with its progress tracking
+   * @param index The index of the file in the files array
+   * @returns Promise resolving to an array of TestCase objects
+   */
   const processFile = async (fileWithProgress: FileWithProgress, index: number) => {
     try {
+      // Update status to processing to show visual feedback
       setFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, status: 'processing' } : f
       ));
 
       const testCases = await parseCSV(fileWithProgress.file);
       
+      // Update status to completed with 100% progress
       setFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, progress: 100, status: 'completed' } : f
       ));
 
       return testCases;
     } catch (err) {
+      // Handle errors by updating the file status and showing the error message
       const errorMessage = err instanceof Error ? err.message : "Failed to parse CSV file";
       setFiles(prev => prev.map((f, i) => 
         i === index ? { ...f, error: errorMessage, status: 'error' } : f
@@ -90,12 +163,22 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
     }
   };
 
+  /**
+   * Handles the upload and processing of all files.
+   * 
+   * We process files sequentially rather than in parallel to:
+   * 1. Prevent overwhelming the browser with multiple large file operations
+   * 2. Provide clearer progress tracking for users
+   * 3. Ensure consistent resource usage throughout the process
+   */
   const handleUpload = async () => {
     if (files.length === 0) return;
 
     setIsUploading(true);
     const allTestCases: TestCase[] = [];
 
+    // Process each file sequentially to avoid overwhelming the browser
+    // and to provide clear progress indicators to the user
     for (let i = 0; i < files.length; i++) {
       if (files[i].status !== 'completed') {
         const testCases = await processFile(files[i], i);
@@ -103,6 +186,7 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
       }
     }
 
+    // Only call the callback if we have test cases to avoid empty uploads
     if (allTestCases.length > 0) {
       onFileUpload(allTestCases);
     }
@@ -116,6 +200,7 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
       </CardHeader>
       <CardContent>
         <div className="flex flex-col gap-4">
+          {/* Drag and drop area with visual feedback during drag operations */}
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
               dragActive
@@ -149,6 +234,7 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
             </div>
           </div>
 
+          {/* File list with progress indicators and status for each file */}
           {files.length > 0 && (
             <div className="space-y-3">
               {files.map((fileWithProgress, index) => (
@@ -180,16 +266,19 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
                   </div>
 
                   <div className="space-y-2">
+                    {/* Progress bar for visual feedback during processing */}
                     <Progress
                       value={fileWithProgress.progress}
                       className="h-1"
                     />
+                    {/* Error message display for failed files */}
                     {fileWithProgress.error && (
                       <div className="text-xs text-red-400 flex items-center gap-1">
                         <AlertCircle className="h-3 w-3" />
                         {fileWithProgress.error}
                       </div>
                     )}
+                    {/* Success message for completed files */}
                     {fileWithProgress.status === 'completed' && (
                       <div className="text-xs text-green-400 flex items-center gap-1">
                         <CheckCircle className="h-3 w-3" />
@@ -204,6 +293,7 @@ export function FileUpload({ onFileUpload }: FileUploadProps) {
         </div>
       </CardContent>
       <CardFooter className="pt-2">
+        {/* Upload button with dynamic text based on file count and upload state */}
         <Button 
           onClick={handleUpload} 
           disabled={files.length === 0 || isUploading}
