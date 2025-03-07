@@ -111,17 +111,6 @@ Remember:
 - Focus on substance over style
 - Account for valid alternative phrasings
 ```
-
-### 🏆 Scoring System
-
-| Score | Rating | Description |
-|-------|--------|-------------|
-| **9-10** | ⭐⭐⭐⭐⭐ | **Exceptional** - Perfect or near-perfect match in meaning and quality |
-| **7-8** | ⭐⭐⭐⭐ | **Strong** - Minor differences but maintains accuracy and completeness |
-| **5-6** | ⭐⭐⭐ | **Acceptable** - Some important elements present but with notable omissions |
-| **3-4** | ⭐⭐ | **Poor** - Major omissions or inaccuracies |
-| **0-2** | ⭐ | **Unacceptable** - Completely incorrect or irrelevant |
-
 ### 📊 Example Judgment
 
 For the input:
