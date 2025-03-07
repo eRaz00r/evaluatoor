@@ -1,27 +1,37 @@
-# Local LLM Evaluation Web Application
+# 🔍 Evaluatoor - Local LLM Evaluation Tool
 
-A web application for evaluating and judging LLM responses using local models via Ollama.
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLMs-green?style=for-the-badge)](https://ollama.ai/)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
-## Features
+A modern web application for evaluating and judging LLM responses using local models via Ollama. Test your LLMs locally without sending data to external APIs!
 
-- Upload CSV files containing test cases for LLM evaluation
-- Select LLMs for evaluation and judgment from locally available models via Ollama
-- Run evaluations on test cases using the selected LLM
-- Judge the quality of generated responses using a separate LLM
-- Display real-time logs of the evaluation and judgment process
-- Download results in CSV and JSON formats
+![Evaluatoor Demo](https://via.placeholder.com/800x400?text=Evaluatoor+Demo)
 
-## Prerequisites
+## ✨ Features
+
+- 📤 **Multiple File Upload** - Drag and drop CSV files with test cases
+- 🤖 **Local LLM Integration** - Use your own models via Ollama
+- 📊 **Real-time Progress** - Track evaluation progress with visual indicators
+- 📝 **Detailed Judgments** - Get comprehensive scoring of LLM responses
+- 📈 **Export Results** - Download in CSV and JSON formats
+- 🔒 **Privacy Focused** - All processing happens locally
+
+## 🚀 Getting Started
+
+### Prerequisites
 
 - [Node.js](https://nodejs.org/) (v18 or later)
 - [Ollama](https://ollama.ai/) installed and running locally with at least one model
 
-## Getting Started
+### Installation
 
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/evaluatoor.git
+git clone https://github.com/eRaz00r/evaluatoor.git
 cd evaluatoor
 ```
 
@@ -39,15 +49,17 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## CSV Format
+## 📋 CSV Format
 
 The application expects CSV files with the following columns:
 
-- `id` (optional): A unique identifier for the test case
-- `input`: The input prompt for the LLM
-- `expected_output`: The expected response from the LLM
+| Column | Description |
+|--------|-------------|
+| `id` (optional) | A unique identifier for the test case |
+| `input` | The input prompt for the LLM |
+| `expected_output` | The expected response from the LLM |
 
-Example:
+### Example:
 
 ```csv
 id,input,expected_output
@@ -55,19 +67,19 @@ id,input,expected_output
 2,"Explain quantum computing in simple terms.","Quantum computing uses quantum bits or qubits that can exist in multiple states at once, unlike classical bits that are either 0 or 1. This allows quantum computers to process certain types of problems much faster than classical computers."
 ```
 
-## How It Works
+## 🔄 How It Works
 
-1. **Upload CSV**: Upload a CSV file containing test cases.
-2. **Select Models**: Choose an LLM for evaluation and another for judgment from the available models in Ollama.
-3. **Run Evaluation**: Process each test case with the selected evaluation LLM to generate responses.
-4. **Run Judgment**: Use the selected judge LLM to compare generated responses against expected outputs.
-5. **Download Results**: Export the results in CSV or JSON format for further analysis.
+1. **📤 Upload CSV** - Upload a CSV file containing test cases
+2. **🤖 Select Models** - Choose LLMs for evaluation and judgment
+3. **▶️ Run Evaluation** - Process test cases and generate responses
+4. **⚖️ Judge Results** - Compare generated responses against expected outputs
+5. **💾 Download** - Export results for further analysis
 
-## LLM Judge System
+## ⚖️ LLM Judge System
 
 The application uses a specialized LLM judge to evaluate the quality of generated responses compared to expected outputs.
 
-### Judge Prompt Template
+### 📝 Judge Prompt Template
 
 ```
 You are an expert evaluator of LLM responses. Your task is to judge the quality of a generated response compared to an expected response.
@@ -100,7 +112,17 @@ Remember:
 - Account for valid alternative phrasings
 ```
 
-### Example Judgment
+### 🏆 Scoring System
+
+| Score | Rating | Description |
+|-------|--------|-------------|
+| **9-10** | ⭐⭐⭐⭐⭐ | **Exceptional** - Perfect or near-perfect match in meaning and quality |
+| **7-8** | ⭐⭐⭐⭐ | **Strong** - Minor differences but maintains accuracy and completeness |
+| **5-6** | ⭐⭐⭐ | **Acceptable** - Some important elements present but with notable omissions |
+| **3-4** | ⭐⭐ | **Poor** - Major omissions or inaccuracies |
+| **0-2** | ⭐ | **Unacceptable** - Completely incorrect or irrelevant |
+
+### 📊 Example Judgment
 
 For the input:
 ```json
@@ -119,10 +141,21 @@ The judge might respond:
 }
 ```
 
-## Local Processing
+## 🔒 Privacy
 
 All processing is done locally on your machine. No data is sent to external servers or APIs. The application communicates only with the local Ollama API.
 
-## License
+## 💡 Performance Tips
+
+- Use smaller, quantized models for faster evaluation
+- Adjust context length in Ollama for better performance
+- Process batches of test cases for efficiency
+- Consider GPU acceleration for larger models
+
+## 👨‍💻 Repository Information
+
+This repository is maintained by [eRaz00r](https://github.com/eRaz00r).
+
+## 📄 License
 
 MIT
