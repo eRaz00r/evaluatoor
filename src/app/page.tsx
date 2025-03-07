@@ -3,12 +3,13 @@
 import React, { useState } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { ModelSelector } from "@/components/ModelSelector";
+import { ModelConfig } from "@/components/ModelConfig";
 import { TestCaseList } from "@/components/TestCaseList";
 import { LogDisplay } from "@/components/LogDisplay";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogEntry, TestCase } from "@/types";
+import { LogEntry, TestCase, ModelConfig as ModelConfigType, DEFAULT_MODEL_CONFIG } from "@/types";
 import { evaluateTestCase, judgeResponse } from "@/services/ollamaService";
 import { generateCSV, generateJSON } from "@/services/csvService";
 import { downloadFile } from "@/lib/utils";
@@ -29,8 +30,8 @@ export default function Home() {
   const [judgeModelId, setJudgeModelId] = useState<string>("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isEvaluating, setIsEvaluating] = useState(false);
-  const [isJudging, setIsJudging] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [modelConfig, setModelConfig] = useState<ModelConfigType>(DEFAULT_MODEL_CONFIG);
 
   /**
    * Adds a log entry to the log display.
@@ -63,6 +64,19 @@ export default function Home() {
   };
 
   /**
+   * Handles changes to the model configuration.
+   * 
+   * We only allow configuration changes when not evaluating to ensure
+   * consistent parameters throughout the evaluation process.
+   */
+  const handleConfigChange = (newConfig: ModelConfigType) => {
+    if (!isEvaluating) {
+      setModelConfig(newConfig);
+      addLog(`Updated model configuration: Context window=${newConfig.contextWindowSize}, Temperature=${newConfig.temperature}`, "info");
+    }
+  };
+
+  /**
    * Runs both evaluation and judgment in a single operation.
    * 
    * We process test cases sequentially rather than in parallel to:
@@ -88,6 +102,7 @@ export default function Home() {
     setIsEvaluating(true);
     setProgress(0);
     addLog(`Starting evaluation with models: ${evaluationModelId} (eval) and ${judgeModelId} (judge)`, "info");
+    addLog(`Using configuration: Context window=${modelConfig.contextWindowSize}, Temperature=${modelConfig.temperature}`, "info");
 
     const updatedTestCases = [...testCases];
     let completedCount = 0;
@@ -99,7 +114,7 @@ export default function Home() {
       try {
         // Evaluate
         addLog(`Evaluating test case ${testCase.id}...`, "info");
-        const generatedOutput = await evaluateTestCase(evaluationModelId, testCase);
+        const generatedOutput = await evaluateTestCase(evaluationModelId, testCase, modelConfig);
         
         updatedTestCases[i] = {
           ...testCase,
@@ -114,7 +129,7 @@ export default function Home() {
         
         // Judge
         addLog(`Judging test case ${testCase.id}...`, "info");
-        const { judgment, score } = await judgeResponse(judgeModelId, updatedTestCases[i]);
+        const { judgment, score } = await judgeResponse(judgeModelId, updatedTestCases[i], modelConfig);
         
         updatedTestCases[i] = {
           ...updatedTestCases[i],
@@ -177,7 +192,6 @@ export default function Home() {
 
   // Derived state values to simplify conditional rendering logic
   const hasResults = testCases.some((tc) => tc.generated_output);
-  const hasJudgments = testCases.some((tc) => tc.judgment);
   const hasTestCases = testCases.length > 0;
 
   // The UI is structured in a top-down workflow that guides users through
@@ -205,24 +219,38 @@ export default function Home() {
             <FileUpload onFileUpload={handleFileUpload} />
           </div>
           
-          {/* Model Selection - Disabled until files are uploaded to enforce workflow */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="glass-card card-glow">
-              <ModelSelector 
-                title="Evaluation Model" 
-                onModelSelect={setEvaluationModelId} 
-                selectedModelId={evaluationModelId}
-                disabled={!hasTestCases}
-              />
+          {/* Model Selection and Configuration */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Model Selectors */}
+            <div className="md:col-span-2 grid gap-6 md:grid-cols-2">
+              <div className="glass-card card-glow">
+                <ModelSelector 
+                  title="Evaluation Model" 
+                  onModelSelect={setEvaluationModelId} 
+                  selectedModelId={evaluationModelId}
+                  disabled={!hasTestCases || isEvaluating}
+                />
+              </div>
+              
+              <div className="glass-card card-glow">
+                <ModelSelector 
+                  title="Judge Model" 
+                  onModelSelect={setJudgeModelId} 
+                  selectedModelId={judgeModelId}
+                  disabled={!hasTestCases || isEvaluating}
+                />
+              </div>
             </div>
             
+            {/* Model Configuration */}
             <div className="glass-card card-glow">
-              <ModelSelector 
-                title="Judge Model" 
-                onModelSelect={setJudgeModelId} 
-                selectedModelId={judgeModelId}
-                disabled={!hasTestCases}
-              />
+              <div className="p-6">
+                <ModelConfig 
+                  config={modelConfig} 
+                  onConfigChange={handleConfigChange}
+                  disabled={isEvaluating}
+                />
+              </div>
             </div>
           </div>
 

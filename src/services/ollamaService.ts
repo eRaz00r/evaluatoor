@@ -1,4 +1,4 @@
-import { LLMModel, TestCase } from "@/types";
+import { LLMModel, TestCase, ModelConfig, DEFAULT_MODEL_CONFIG } from "@/types";
 
 /**
  * Base URL for the Ollama API.
@@ -52,11 +52,13 @@ export async function getAvailableModels(): Promise<LLMModel[]> {
  * 
  * @param modelId The ID of the model to use
  * @param prompt The prompt to send to the model
+ * @param config Optional configuration parameters for the model
  * @returns Promise resolving to the generated text response
  */
 export async function generateResponse(
   modelId: string,
-  prompt: string
+  prompt: string,
+  config: ModelConfig = DEFAULT_MODEL_CONFIG
 ): Promise<string> {
   try {
     const response = await fetch(`${OLLAMA_API_BASE_URL}/generate`, {
@@ -68,6 +70,10 @@ export async function generateResponse(
         model: modelId,
         prompt: prompt,
         stream: false, // Non-streaming for simplicity and reliability
+        options: {
+          num_ctx: config.contextWindowSize,
+          temperature: config.temperature
+        }
       }),
     });
 
@@ -93,14 +99,16 @@ export async function generateResponse(
  * 
  * @param modelId The ID of the model to use for evaluation
  * @param testCase The test case to evaluate
+ * @param config Optional configuration parameters for the model
  * @returns Promise resolving to the generated output
  */
 export async function evaluateTestCase(
   modelId: string,
-  testCase: TestCase
+  testCase: TestCase,
+  config: ModelConfig = DEFAULT_MODEL_CONFIG
 ): Promise<string> {
   try {
-    return await generateResponse(modelId, testCase.input);
+    return await generateResponse(modelId, testCase.input, config);
   } catch (error) {
     console.error(`Error evaluating test case ${testCase.id}:`, error);
     throw error;
@@ -120,11 +128,13 @@ export async function evaluateTestCase(
  * 
  * @param judgeModelId The ID of the model to use for judgment
  * @param testCase The test case containing input, expected output, and generated output
+ * @param config Optional configuration parameters for the model
  * @returns Promise resolving to an object containing the judgment and score
  */
 export async function judgeResponse(
   judgeModelId: string,
-  testCase: TestCase
+  testCase: TestCase,
+  config: ModelConfig = DEFAULT_MODEL_CONFIG
 ): Promise<{ judgment: string; score: number }> {
   try {
     const prompt = `
@@ -161,7 +171,7 @@ Remember:
 - Account for valid alternative phrasings
 `;
 
-    const response = await generateResponse(judgeModelId, prompt);
+    const response = await generateResponse(judgeModelId, prompt, config);
     
     // Enhanced parsing logic with multiple fallback strategies
     return extractJudgmentAndScore(response, testCase.id);

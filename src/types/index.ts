@@ -87,4 +87,26 @@ export interface LogEntry {
   timestamp: Date;
   message: string;
   type: 'info' | 'error' | 'success' | 'warning';
-} 
+}
+
+/**
+ * Configuration options for LLM models.
+ * 
+ * We separate these parameters to allow users to configure
+ * performance-critical settings without changing the model selection.
+ */
+export interface ModelConfig {
+  contextWindowSize: number;
+  temperature: number;
+}
+
+/**
+ * Default model configuration with reasonable values.
+ * 
+ * These defaults balance performance and quality for most use cases
+ * while allowing users to override them for specific needs.
+ */
+export const DEFAULT_MODEL_CONFIG: ModelConfig = {
+  contextWindowSize: 2048,
+  temperature: 0.7
+}; 
